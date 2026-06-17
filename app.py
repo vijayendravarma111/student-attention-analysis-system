@@ -153,7 +153,7 @@ input[type="file"] {
 <body>
 
 <header>
-    <h1>🎯 Computer Vision-Based Student Attention Analysis System</h1>
+    <h1> Computer Vision-Based Student Attention Analysis System</h1>
 </header>
 
 <div class="container">
@@ -189,7 +189,7 @@ input[type="file"] {
 
     <!-- Analytics Panel -->
     <div class="panel right-panel">
-        <h2 style="color: #00f0ff; margin-top: 0; font-size: 20px;">📊 Attentiveness Analytics</h2>
+        <h2 style="color: #00f0ff; margin-top: 0; font-size: 20px;"> Attentiveness Analytics</h2>
         
         <div class="analytics-grid">
             <div class="stat-card">
