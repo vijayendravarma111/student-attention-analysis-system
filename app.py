@@ -226,7 +226,7 @@ input[type="file"] {
 
 <script>
     let webcamStream = null;
-    let webcamInterval = null;
+    let isWebcamStreaming = false;
 
     function startBrowserWebcam() {
         if (webcamStream) {
@@ -240,7 +240,7 @@ input[type="file"] {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         
-        navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+        navigator.mediaDevices.getUserMedia({ video: { width: 480, height: 360 } })
             .then(stream => {
                 webcamStream = stream;
                 video.srcObject = stream;
@@ -251,12 +251,21 @@ input[type="file"] {
                 const img = document.getElementById('webcam-viewfinder');
                 
                 fetch('/clear_stream');
-                
-                webcamInterval = setInterval(() => {
-                    if (video.videoWidth === 0) return;
+                isWebcamStreaming = true;
+
+                function sendNextFrame() {
+                    if (!isWebcamStreaming) return;
                     
-                    canvas.width = video.videoWidth;
-                    canvas.height = video.videoHeight;
+                    if (video.videoWidth === 0) {
+                        requestAnimationFrame(sendNextFrame);
+                        return;
+                    }
+                    
+                    // Cap max resolution at 480px width to minimize upload bandwidth
+                    const scale = Math.min(1.0, 480 / video.videoWidth);
+                    canvas.width = video.videoWidth * scale;
+                    canvas.height = video.videoHeight * scale;
+                    
                     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
                     
                     canvas.toBlob(blob => {
@@ -272,10 +281,23 @@ input[type="file"] {
                             if (data.image) {
                                 img.src = 'data:image/jpeg;base64,' + data.image;
                             }
+                            if (isWebcamStreaming) {
+                                // Throttle slightly to yield to UI thread (~25 FPS max)
+                                setTimeout(sendNextFrame, 30);
+                            }
                         })
-                        .catch(err => console.log("Webcam frame error:", err));
-                    }, 'image/jpeg', 0.6);
-                }, 100);
+                        .catch(err => {
+                            console.log("Webcam frame error:", err);
+                            if (isWebcamStreaming) {
+                                setTimeout(sendNextFrame, 100); // retry after error
+                            }
+                        });
+                    }, 'image/jpeg', 0.5); // 50% quality compression (approx 15KB per frame)
+                }
+
+                // Initial boot trigger
+                video.onloadedmetadata = () => { sendNextFrame(); };
+                setTimeout(sendNextFrame, 500);
             })
             .catch(err => {
                 alert("Error accessing webcam: " + err);
@@ -283,13 +305,10 @@ input[type="file"] {
     }
 
     function stopBrowserWebcam() {
+        isWebcamStreaming = false;
         if (webcamStream) {
             webcamStream.getTracks().forEach(track => track.stop());
             webcamStream = null;
-        }
-        if (webcamInterval) {
-            clearInterval(webcamInterval);
-            webcamInterval = null;
         }
         location.href = '/stop_stream';
     }
