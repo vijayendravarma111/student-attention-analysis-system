@@ -1,17 +1,17 @@
-# 🎯 Computer Vision-Based Student Attention Analysis System
+#  Computer Vision-Based Student Attention Analysis System
 
-### 🌐 Live Web Demo: [student-attention-analysis-system.onrender.com](https://student-attention-analysis-system.onrender.com)
+###  Live Web Demo: [student-attention-analysis-system.onrender.com](https://student-attention-analysis-system.onrender.com)
 
 ---
 
-## 💡 Why this project matters (The Human Angle)
+##  Why this project matters 
 In digital classrooms and remote learning, instructors lose the ability to read the room. They can't easily see who is focused, who is distracted, or who has drifted away. 
 
 This project solves that problem. By combining **Deep Learning** and **3D Head Geometry**, it acts as a passive, privacy-preserving analyzer that monitors attentiveness in real-time. It doesn't record videos; it simply interprets the physical signals of attention—head orientation, gaze alignment, and facial focus markers—and provides a quantitative score of classroom engagement.
 
 ---
 
-## 🚀 Key Project Capabilities
+##  Key Project Capabilities
 * **Live Webcam Monitoring:** Runs fully inside the web browser with zero-lag transmission to the backend.
 * **3D Head Pose Tracking:** Resolves exactly where a student is looking (pitch, yaw, roll) to identify if they are looking away (left, right, up, down).
 * **Attentiveness Scoring (0-100%):** Calculates a combined score based on facial deep learning confidence and head rotation angles.
@@ -19,7 +19,7 @@ This project solves that problem. By combining **Deep Learning** and **3D Head G
 
 ---
 
-## 🧠 Under the Hood (How it Works)
+##  Under the Hood (How it Works)
 
 The system works as a clean **two-stage computer vision pipeline**:
 
@@ -44,7 +44,7 @@ The system works as a clean **two-stage computer vision pipeline**:
 
 ---
 
-## ⚡ Technical Challenges Overcome (HR & Recruiter Impressive)
+##  Technical Challenges Overcome
 
 ### 1. Migrating to ONNX Runtime (Resolved 502 Bad Gateway)
 * **Challenge:** Deploying a standard TensorFlow/Keras model to Render's free tier caused the service to crash immediately (OOM / 502 Bad Gateway) due to Render's strict **512MB RAM limit**.
@@ -60,7 +60,7 @@ The system works as a clean **two-stage computer vision pipeline**:
 
 ---
 
-## 🛠️ Tech Stack & Modularity
+##  Tech Stack & Modularity
 * **Deep Learning Inference:** ONNX Runtime
 * **Computer Vision:** OpenCV (DNN module, FaceDetectorYN, solvePnP)
 * **Web Framework:** Flask
@@ -69,7 +69,7 @@ The system works as a clean **two-stage computer vision pipeline**:
 
 ---
 
-## 📄 ATS-Friendly Resume Entry
+
 
 ### **Computer Vision-Based Student Attention Analysis System**
 * **Tech Stack:** OpenCV (DNN, FaceDetectorYN), ONNX Runtime, solvePnP, Euler Decomposition, Flask, Docker, Python.
