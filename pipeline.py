@@ -6,7 +6,7 @@ from classifier import FocusClassifier
 from analytics import AttentionAnalytics
 
 class AttentionAnalysisPipeline:
-    def __init__(self, detector_path="face_detection_yunet_2023mar.onnx", classifier_path="focus_saved_model", architecture="custom"):
+    def __init__(self, detector_path="face_detection_yunet_2023mar.onnx", classifier_path="focus_model.onnx", architecture="custom"):
         """
         Orchestrator for the two-stage computer vision pipeline.
         Combines detection, pose estimation, classification, and metrics extraction.

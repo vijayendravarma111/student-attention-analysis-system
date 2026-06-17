@@ -18,7 +18,7 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Initialize the modular computer vision pipeline (SavedModel + YuNet ONNX)
 pipeline = AttentionAnalysisPipeline(
     detector_path="face_detection_yunet_2023mar.onnx",
-    classifier_path="focus_saved_model",
+    classifier_path="focus_model.onnx",
     architecture="custom" # "custom" loads the trained SavedModel; "mobilenetv2" loads the alternate arch
 )
 

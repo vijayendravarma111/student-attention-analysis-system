@@ -1,58 +1,39 @@
 import os
-import tensorflow as tf
-from keras.layers import TFSMLayer
+import numpy as np
+import onnxruntime as ort
 
 class FocusClassifier:
-    def __init__(self, model_path="focus_saved_model", architecture="custom"):
+    def __init__(self, model_path="focus_model.onnx", architecture="custom"):
         """
-        Initializes focus classifier.
-        Supports:
-        - "custom": Custom trained SavedModel loaded using TFSMLayer (functional default)
-        - "mobilenetv2": MobileNetV2 pre-trained base + custom top layer (evaluation architecture)
+        Initializes the focus classifier using ONNX Runtime.
+        This provides a lightweight, production-grade inference engine with <10% of TensorFlow's RAM footprint.
         """
         self.architecture = architecture
-        if architecture == "custom" and os.path.exists(model_path):
-            layer = TFSMLayer(model_path, call_endpoint="serving_default")
-            inp = tf.keras.Input(shape=(224, 224, 3))
-            out = layer(inp)
-            self.model = tf.keras.Model(inp, out)
-            self.is_loaded = True
-            print("[OK] Loaded custom Focus SavedModel.")
-        else:
-            # Fallback/Evaluation alternative: MobileNetV2 architecture
-            print(f"[WARN] Loading MobileNetV2 evaluation architecture. (Note: Needs fine-tuning on attentiveness dataset)")
-            base_model = tf.keras.applications.MobileNetV2(
-                input_shape=(224, 224, 3),
-                include_top=False,
-                weights="imagenet"
-            )
-            base_model.trainable = False
-            inputs = tf.keras.Input(shape=(224, 224, 3))
-            x = base_model(inputs, training=False)
-            x = tf.keras.layers.GlobalAveragePooling2D()(x)
-            outputs = tf.keras.layers.Dense(1, activation="sigmoid")(x)
-            self.model = tf.keras.Model(inputs, outputs)
-            self.is_loaded = True
+        
+        if not os.path.exists(model_path) and os.path.exists("focus_model.onnx"):
+            model_path = "focus_model.onnx"
+            
+        print(f"[OK] Loading classifier: {model_path} via ONNX Runtime.")
+        
+        # Initialize ONNX inference session
+        self.session = ort.InferenceSession(model_path)
+        self.input_name = self.session.get_inputs()[0].name
+        self.output_name = self.session.get_outputs()[0].name
+        self.is_loaded = True
 
     def predict(self, face_rgb):
         """
-        Preprocesses face crop and returns probability prediction.
+        Preprocesses face crop and runs ONNX inference.
         """
         import cv2
-        import numpy as np
 
-        # Preprocessing: Spatial scaling & Min-Max Normalization
+        # Preprocessing: Spatial resizing & pixel normalization
         face_img = cv2.resize(face_rgb, (224, 224))
-        face_img = face_img / 255.0
-        face_input = np.expand_dims(face_img, axis=0)
+        face_img = face_img.astype(np.float32) / 255.0
+        face_input = np.expand_dims(face_img, axis=0) # Shape: (1, 224, 224, 3)
 
-        if self.architecture == "custom":
-            output = self.model(face_input, training=False)
-            if isinstance(output, dict):
-                pred = list(output.values())[0].numpy()[0][0]
-            else:
-                pred = output.numpy()[0][0]
-        else:
-            pred = self.model(face_input, training=False).numpy()[0][0]
+        # Run inference
+        outputs = self.session.run([self.output_name], {self.input_name: face_input})
+        pred = outputs[0][0][0]
 
         return float(pred)
