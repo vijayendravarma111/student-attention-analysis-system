@@ -170,8 +170,8 @@ input[type="file"] {
                 <input id="video-upload" type="file" name="video" onchange="this.form.submit()">
             </form>
 
-            <button onclick="location.href='/start_webcam'">Start Webcam Stream</button>
-            <button onclick="location.href='/stop_stream'" style="background:#ff4d4d; color:#fff;">Stop Stream</button>
+            <button onclick="startBrowserWebcam()">Start Webcam Stream</button>
+            <button onclick="stopBrowserWebcam()" style="background:#ff4d4d; color:#fff;">Stop Stream</button>
         </div>
 
         <div class="video-display">
@@ -225,6 +225,75 @@ input[type="file"] {
 </div>
 
 <script>
+    let webcamStream = null;
+    let webcamInterval = null;
+
+    function startBrowserWebcam() {
+        if (webcamStream) {
+            stopBrowserWebcam();
+        }
+
+        const video = document.createElement('video');
+        video.autoplay = true;
+        video.playsInline = true;
+        
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } })
+            .then(stream => {
+                webcamStream = stream;
+                video.srcObject = stream;
+                video.play();
+                
+                const displayDiv = document.querySelector('.video-display');
+                displayDiv.innerHTML = '<img id="webcam-viewfinder" src="" style="max-width:100%; max-height:500px;">';
+                const img = document.getElementById('webcam-viewfinder');
+                
+                fetch('/clear_stream');
+                
+                webcamInterval = setInterval(() => {
+                    if (video.videoWidth === 0) return;
+                    
+                    canvas.width = video.videoWidth;
+                    canvas.height = video.videoHeight;
+                    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                    
+                    canvas.toBlob(blob => {
+                        const formData = new FormData();
+                        formData.append('frame', blob);
+                        
+                        fetch('/process_webcam_frame', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.image) {
+                                img.src = 'data:image/jpeg;base64,' + data.image;
+                            }
+                        })
+                        .catch(err => console.log("Webcam frame error:", err));
+                    }, 'image/jpeg', 0.6);
+                }, 100);
+            })
+            .catch(err => {
+                alert("Error accessing webcam: " + err);
+            });
+    }
+
+    function stopBrowserWebcam() {
+        if (webcamStream) {
+            webcamStream.getTracks().forEach(track => track.stop());
+            webcamStream = null;
+        }
+        if (webcamInterval) {
+            clearInterval(webcamInterval);
+            webcamInterval = null;
+        }
+        location.href = '/stop_stream';
+    }
+
     // Poll the analytics endpoint every second to update UI
     function updateAnalytics() {
         fetch('/analytics_summary')
@@ -305,12 +374,36 @@ def upload_video():
     
     return render_template_string(HTML_DASHBOARD, img_path=None, streaming=True, timestamp=int(time.time()))
 
-@app.route("/start_webcam")
-def start_webcam():
-    global current_stream_source
-    current_stream_source = "webcam"
+import base64
+
+@app.route("/process_webcam_frame", methods=["POST"])
+def process_webcam_frame():
+    if "frame" not in request.files:
+        return jsonify({"error": "No frame file provided"}), 400
+        
+    file = request.files["frame"]
+    file_bytes = np.frombuffer(file.read(), np.uint8)
+    frame_bgr = cv2.imdecode(file_bytes, cv2.IMREAD_COLOR)
+    
+    if frame_bgr is None:
+        return jsonify({"error": "Invalid image frame"}), 400
+        
+    try:
+        processed_frame, _ = pipeline.process_frame(frame_bgr)
+        ret, jpeg = cv2.imencode('.jpg', processed_frame)
+        if not ret:
+            return jsonify({"error": "Could not encode processed frame"}), 500
+        
+        base64_img = base64.b64encode(jpeg.tobytes()).decode('utf-8')
+        return jsonify({"image": base64_img})
+    except Exception as e:
+        print(f"[WARN] Failed processing browser webcam frame: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/clear_stream")
+def clear_stream():
     pipeline.analytics.reset()
-    return render_template_string(HTML_DASHBOARD, img_path=None, streaming=True, timestamp=int(time.time()))
+    return jsonify({"status": "cleared"})
 
 @app.route("/stop_stream")
 def stop_stream():
